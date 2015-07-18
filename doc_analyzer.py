@@ -165,95 +165,64 @@ def word_frequency(folder):
       error_files.append(filename)
       print '[-] '+ filename + ' UNABLE TO PROCESS: ' + str(e)
       continue
+
+  words = ''.join(c for c in text if c.isalpha() or c.isspace()).split()#create a list of words from a file
+
+  words_filter = [c for c in words if len(c)>2 and len(c)<20 and c not in ignore] #remove words less than 3 and greater than 20 in lengths
+
+  words_array = np.array(words_filter)#convert the list of words in a file into an np array
+
+  unique = np.unique(words_array)#extract unique words from a file
+
+  unique_all = np.concatenate((unique_all, unique),axis=0)#create an array of unique words from all files
+
+  words_array_freq = collections.Counter(words_array)#calculate frequencies of each word in a file by creating a dictionary with words as keys
+
+  dict_freq[filename] = words_array_freq#assign frequency array to a filename which is a key
 		
-		
-		words = ''.join(c for c in text if c.isalpha() or c.isspace()).split()#create a list of words from a file
+  final_unique = np.unique(unique_all)#remove duplicates to create an array of unique words from all files
 
-		words_filter = [c for c in words if len(c)>2 and len(c)<20 and c not in ignore] #remove words less than 3 and greater than 20 in lengths
+  dict_hash = dictionary_hash(final_unique)#dictionary of indexes assigned to all unique words.  i.e. dict_hash['apple'] = 1234, etc.
+	
+  # creates a dictionary of filenames and their vector-form representation
+  dict_vector = dictionary_vector(dict_hash, dict_freq)
+	
+  dict_similarity = {}
 
-		words_array = np.array(words_filter)#convert the list of words in a file into an np array
+  dict_similarity['filenames'] = text_files
+	
+  if len(error_files)>0:
+    dict_similarity['error_files'] = error_files
 
-		unique = np.unique(words_array)#extract unique words from a file
-
-		unique_all = np.concatenate((unique_all, unique),axis=0)#create an array of unique words from all files
-
-		words_array_freq = collections.Counter(words_array)#calculate frequencies of each word in a file by creating a dictionary with words as keys
-
-		dict_freq[filename] = words_array_freq#assign frequency array to a filename which is a key
-		
-		
-
-	final_unique = np.unique(unique_all)#remove duplicates to create an array of unique words from all files
-
-	dict_hash = dictionary_hash(final_unique)#dictionary of indexes assigned to all unique words.  i.e. dict_hash['apple'] = 1234, etc.
+  for file in text_files:
+    filevector1 = dict_vector[file]
+    similarity_list = []
+    for other in text_files:
+      filevector2 = dict_vector[other]
+      cosine = cos_vector(filevector1, filevector2)	
+      similarity_list.append(cosine)		
+      dict_similarity[file] = similarity_list
 	
-	
-	# creates a dictionary of filenames and their vector-form representation
-	dict_vector = dictionary_vector(dict_hash, dict_freq)
-	
-	
-	dict_similarity = {}
-
-	dict_similarity['filenames'] = text_files
-	
-	if len(error_files)>0:
-	
-		dict_similarity['error_files'] = error_files
-
-	for file in text_files:
-	
-		filevector1 = dict_vector[file]
-	
-		similarity_list = []
-	
-		for other in text_files:
-	
-			filevector2 = dict_vector[other]
-	
-			cosine = cos_vector(filevector1, filevector2)
-		
-			similarity_list.append(cosine)
-			
-		dict_similarity[file] = similarity_list
-	
-	
-	return dict_similarity	
-
-
+  return dict_similarity	
 
 
 def save_csv(data):
-
-	csvfile = open(CSV_NAME,'w')
-
-	csvwriter = csv.writer(csvfile, dialect='excel')
-
-	first_row = [''] + data['filenames']
-
-	csvwriter.writerow(first_row)
-
-	for file_name in data['filenames']:
-	
-		row = [file_name] + data[file_name]
-
-		csvwriter.writerow(row)
+  csvfile = open(CSV_NAME,'w')
+  csvwriter = csv.writer(csvfile, dialect='excel')
+  first_row = [''] + data['filenames']
+  csvwriter.writerow(first_row)
+  
+  for file_name in data['filenames']:	
+    row = [file_name] + data[file_name]
+    csvwriter.writerow(row)
 		
-	if 'error_files' in data:
-		
-		csvfile = open(ERROR_SUMMARY,'w')
+  if 'error_files' in data:		
+    csvfile = open(ERROR_SUMMARY,'w')
+	csvwriter = csv.writer(csvfile, dialect = 'excel')
 	
-		csvwriter = csv.writer(csvfile, dialect = 'excel')
+  for filename in data['error_files']:
+    csvwriter.writerow([filename])
 	
-		for filename in data['error_files']:
-			
-			csvwriter.writerow([filename])
-	
-	
-		
-			
-
-
-
 def main():
 
 	parser = argparse.ArgumentParser(description = "Script to quantify similarity relationships between documents and produce pdf metadata summary. \
@@ -278,12 +247,6 @@ def main():
 	
 	getMetacsv(args.inputfolder)
 	
-	
-	
 	    
 if __name__ =="__main__":
-
-
-	main()
-
-	
+  main()
